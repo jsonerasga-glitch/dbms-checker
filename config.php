@@ -61,3 +61,15 @@ function get_pdo_connection($db_name = null) {
         throw new Exception("MySQL Connection Error: " . $e->getMessage());
     }
 }
+
+/** Verify a student's MySQL credentials without exposing admin credentials. */
+function get_student_pdo_connection($username, $password) {
+    $cfg = get_config();
+    $dsn = "mysql:host={$cfg['db_host']};port={$cfg['db_port']};charset=utf8mb4";
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_TIMEOUT => 3,
+    ];
+    return new PDO($dsn, $username, $password, $options);
+}

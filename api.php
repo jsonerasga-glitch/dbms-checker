@@ -3,6 +3,7 @@
  * DBMS Activity Checker API Router
  */
 
+session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/src/Checker.php';
@@ -149,6 +150,49 @@ try {
                 'count' => count($results),
                 'results' => $results
             ]);
+            break;
+
+        case 'student_login':
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $username = trim($input['username'] ?? '');
+            $password = (string)($input['password'] ?? '');
+            if (!preg_match('/^[A-Za-z0-9_]{1,64}$/', $username) || $password === '') {
+                throw new Exception('Enter a valid MySQL username and password.');
+            }
+            try {
+                $studentPdo = get_student_pdo_connection($username, $password);
+                $databases = $studentPdo->query('SHOW DATABASES')->fetchAll(PDO::FETCH_COLUMN);
+            } catch (Exception $e) {
+                throw new Exception('Invalid MySQL username or password.');
+            }
+            $studentDb = null;
+            foreach ($databases as $database) {
+                if (strcasecmp($database, $username) === 0) { $studentDb = $database; break; }
+            }
+            if (!$studentDb) {
+                throw new Exception('Your MySQL user must have access to a database with the same name as your username.');
+            }
+            session_regenerate_id(true);
+            $_SESSION['student_username'] = $username;
+            $_SESSION['student_db'] = $studentDb;
+            echo json_encode(['success' => true, 'username' => $username, 'database' => $studentDb]);
+            break;
+
+        case 'student_status':
+            if (empty($_SESSION['student_db'])) {
+                http_response_code(401);
+                throw new Exception('Please log in as a student first.');
+            }
+            $activityId = trim($_GET['activity_id'] ?? $_POST['activity_id'] ?? 'activity1');
+            if (!in_array($activityId, ['activity1', 'activity2'], true)) throw new Exception("Unknown activity '{$activityId}'.");
+            $checker = new ActivityChecker(get_pdo_connection(), get_config());
+            echo json_encode(['success' => true, 'data' => $checker->checkActivity($activityId, $_SESSION['student_db'])]);
+            break;
+
+        case 'student_logout':
+            $_SESSION = [];
+            session_destroy();
+            echo json_encode(['success' => true]);
             break;
 
         case 'view_logs':

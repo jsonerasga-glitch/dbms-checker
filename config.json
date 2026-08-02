@@ -5,8 +5,8 @@
     "db_pass": "json_root123",
     "log_check_enabled": true,
     "log_date_enabled": true,
-    "log_date_start": "2026-07-30",
-    "log_date_end": "2026-07-30",
+    "log_date_start": "2026-07-29",
+    "log_date_end": "2026-07-29",
     "section_filter": "2_cs4",
     "score_weights": {
         "task1": 15,

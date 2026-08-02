@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
     // Config form submission
     const configForm = document.getElementById('config-form');
     if (configForm) {
@@ -180,8 +181,8 @@ function runSingleCheck(dbName) {
 }
 
 // Render Single Student Result UI
-function renderSingleResult(data) {
-    const container = document.getElementById('single-check-results');
+function renderSingleResult(data, containerId = 'single-check-results') {
+    const container = document.getElementById(containerId);
     
     if (!data.db_exists) {
         container.innerHTML = `
