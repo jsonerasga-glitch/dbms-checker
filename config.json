@@ -1,0 +1,19 @@
+{
+    "db_host": "192.168.1.11",
+    "db_port": "3306",
+    "db_user": "json_root",
+    "db_pass": "json_root123",
+    "log_check_enabled": true,
+    "log_date_enabled": true,
+    "log_date_start": "2026-07-30",
+    "log_date_end": "2026-07-30",
+    "section_filter": "2_cs4",
+    "score_weights": {
+        "task1": 15,
+        "task2": 15,
+        "task3": 15,
+        "task4": 15,
+        "task5": 20,
+        "task6": 20
+    }
+}
