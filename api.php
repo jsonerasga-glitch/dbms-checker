@@ -91,6 +91,10 @@ try {
 
         case 'check_student':
             $dbName = trim($_GET['db_name'] ?? $_POST['db_name'] ?? '');
+            $activityId = trim($_GET['activity_id'] ?? $_POST['activity_id'] ?? 'activity1');
+            if (!in_array($activityId, ['activity1', 'activity2'], true)) {
+                throw new Exception("Unknown activity '{$activityId}'.");
+            }
             if (!$dbName) {
                 throw new Exception("Database name parameter 'db_name' is required.");
             }
@@ -98,7 +102,7 @@ try {
             $pdo = get_pdo_connection();
             $cfg = get_config();
             $checker = new ActivityChecker($pdo, $cfg);
-            $result = $checker->checkActivity1($dbName);
+            $result = $checker->checkActivity($activityId, $dbName);
 
             echo json_encode([
                 'success' => true,
@@ -110,6 +114,10 @@ try {
             $pdo = get_pdo_connection();
             $cfg = get_config();
             $checker = new ActivityChecker($pdo, $cfg);
+            $activityId = trim($_POST['activity_id'] ?? $_GET['activity_id'] ?? 'activity1');
+            if (!in_array($activityId, ['activity1', 'activity2'], true)) {
+                throw new Exception("Unknown activity '{$activityId}'.");
+            }
 
             $dbsParam = $_POST['databases'] ?? $_GET['databases'] ?? [];
             if (is_string($dbsParam)) {
@@ -132,7 +140,7 @@ try {
             foreach ($dbsParam as $db) {
                 $db = trim($db);
                 if ($db) {
-                    $results[] = $checker->checkActivity1($db);
+                    $results[] = $checker->checkActivity($activityId, $db);
                 }
             }
 

@@ -12,11 +12,21 @@ class ActivityChecker {
         $this->cfg = $cfg;
     }
 
+    /** Run a registered activity checker. */
+    public function checkActivity($activityId, $dbName) {
+        if ($activityId === 'activity2') {
+            return $this->checkActivity2($dbName);
+        }
+        return $this->checkActivity1($dbName);
+    }
+
     /**
      * Check single student database against Activity 1 rules
      */
     public function checkActivity1($dbName) {
         $result = [
+            'activity_id' => 'activity1',
+            'activity_name' => 'Activity 1 - Library Database',
             'db_name' => $dbName,
             'db_exists' => false,
             'user_exists' => false,
@@ -81,6 +91,114 @@ class ActivityChecker {
 
         return $result;
     }
+
+    /** Activity 2: Suppliers and items CRUD exercise. */
+    public function checkActivity2($dbName) {
+        $result = [
+            'activity_id' => 'activity2', 'activity_name' => 'Activity 2 - Suppliers and Items CRUD',
+            'db_name' => $dbName, 'db_exists' => false, 'user_exists' => false,
+            'total_score' => 0, 'max_score' => 100, 'percentage' => 0, 'tasks' => [],
+            'logs_found' => [], 'general_log_enabled' => false, 'checked_at' => date('Y-m-d H:i:s')
+        ];
+        $stmt = $this->pdo->prepare('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?');
+        $stmt->execute([$dbName]);
+        if (!$stmt->fetch()) { $result['error'] = "Database '{$dbName}' does not exist on MySQL server."; return $result; }
+        $result['db_exists'] = true;
+        try { $u = $this->pdo->prepare('SELECT User FROM mysql.user WHERE User = ?'); $u->execute([$dbName]); $result['user_exists'] = (bool)$u->fetch(); } catch (Exception $e) { $result['user_exists'] = true; }
+        $logs = $this->fetchStudentGeneralLogs($dbName);
+        $result['general_log_enabled'] = $logs['enabled'];
+        $result['logs_found'] = $logs['entries'];
+
+        // Activity 2 queries depend on both tables. Avoid querying a missing
+        // table and return a clear zero-score result instead of an API error.
+        $missingTables = [];
+        foreach (['suppliers', 'items'] as $table) {
+            if (!$this->tableExists($dbName, $table)) $missingTables[] = $table;
+        }
+        if ($missingTables) {
+            $result['tasks'] = $this->a2UnavailableTasks($missingTables);
+            $result['error'] = 'Activity 2 prerequisite table(s) missing: ' . implode(', ', $missingTables) . '. Score set to 0.';
+            return $result;
+        }
+
+        $tasks = [
+            'task1' => $this->a2Schema($dbName, $logs['entries']),
+            'task2' => $this->a2Task($dbName, $logs['entries'], 2), 'task3' => $this->a2Task($dbName, $logs['entries'], 3),
+            'task4' => $this->a2Task($dbName, $logs['entries'], 4), 'task5' => $this->a2Task($dbName, $logs['entries'], 5),
+            'task6' => $this->a2Task($dbName, $logs['entries'], 6), 'task7' => $this->a2Task($dbName, $logs['entries'], 7),
+            'task8' => $this->a2Task($dbName, $logs['entries'], 8), 'task9' => $this->a2Task($dbName, $logs['entries'], 9),
+            'task10' => $this->a2Task($dbName, $logs['entries'], 10), 'task11' => $this->a2Task($dbName, $logs['entries'], 11),
+            'task12' => $this->a2Task($dbName, $logs['entries'], 12), 'task13' => $this->a2Task($dbName, $logs['entries'], 13),
+            'task14' => $this->a2Task($dbName, $logs['entries'], 14), 'task15' => $this->a2Task($dbName, $logs['entries'], 15),
+            'task16' => $this->a2Task($dbName, $logs['entries'], 16)
+        ];
+        foreach ($tasks as &$task) { $task['weight'] = 6.25; $task['earned_score'] = round($task['score_percent'] / 16, 2); $result['total_score'] += $task['earned_score']; }
+        $result['tasks'] = $tasks; $result['total_score'] = round($result['total_score'], 2); $result['percentage'] = $result['total_score'];
+        return $result;
+    }
+
+    private function a2Schema($dbName, $logs) {
+        $checks = [];
+        $supplier = $this->tableExists($dbName, 'suppliers'); $items = $this->tableExists($dbName, 'items');
+        $checks[] = $this->a2Check('Table suppliers exists', $supplier, $supplier ? 'Found suppliers' : 'Table missing');
+        $checks[] = $this->a2Check('Table items exists', $items, $items ? 'Found items' : 'Table missing');
+        $checks[] = $this->a2ColumnSet($dbName, 'suppliers', ['supplier_id'=>'int', 'supplier_name'=>'varchar', 'contact_number'=>'varchar', 'city'=>'varchar']);
+        $checks[] = $this->a2ColumnSet($dbName, 'items', ['item_id'=>'int', 'item_name'=>'varchar', 'description'=>'varchar', 'category'=>'varchar', 'price'=>'decimal', 'quantity'=>'int', 'supplier_id'=>'int']);
+        $checks[] = $this->a2Check('suppliers primary key is auto-increment supplier_id', $this->a2AutoId($dbName, 'suppliers', 'supplier_id'), 'Verified through information_schema');
+        $checks[] = $this->a2Check('items primary key is auto-increment item_id', $this->a2AutoId($dbName, 'items', 'item_id'), 'Verified through information_schema');
+        $checks[] = $this->a2Check('items.price is DECIMAL and NOT NULL', $this->a2ColumnMatches($dbName, 'items', 'price', 'decimal', true), 'Verified through information_schema');
+        $checks[] = $this->a2Check('items.quantity is INT and NOT NULL', $this->a2ColumnMatches($dbName, 'items', 'quantity', 'int', true), 'Verified through information_schema');
+        $log = $this->a2Log($logs, '/CREATE\\s+TABLE\\s+.*(SUPPLIERS|ITEMS)/');
+        return $this->a2Result('Task 1 - Create suppliers and items tables', $checks, $log);
+    }
+
+    private function a2Task($dbName, $logs, $task) {
+        $spec = [
+            2 => ['Add Alpha Trading using a whole-table INSERT', "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name='Alpha Trading' AND contact_number='09171234567' AND city='Cebu City'", '/INSERT\\s+INTO\\s+.*SUPPLIERS/'],
+            3 => ['Add three suppliers with one multiple-row INSERT', "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name IN ('Bright Goods Inc.','Circle Distributors','Delta Supply House')", '/INSERT\\s+INTO\\s+.*SUPPLIERS.*\\),\\s*\\(/s'],
+            4 => ['Add Palmolive Shampoo using specific columns', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Palmolive Shampoo' AND price=145 AND supplier_id=1", '/INSERT\\s+INTO\\s+.*ITEMS.*PALMOLIVE\\s+SHAMPOO/s'],
+            5 => ['Add five items with one multiple-row INSERT', null, '/INSERT\\s+INTO\\s+.*ITEMS.*(DOVE\\s+SOAP|SAFEGUARD).*\\),\\s*\\(/s'],
+            6 => ['Display all rows and columns of items', null, '/SELECT\\s+\\*\\s+FROM\\s+.*ITEMS/'],
+            7 => ['Display item_name and price for all items', null, '/SELECT\\s+.*ITEM_NAME.*PRICE.*FROM\\s+.*ITEMS/s'],
+            8 => ['Display items with item_id greater than 1003', null, '/SELECT\\s+.*FROM\\s+.*ITEMS.*ITEM_ID\\s*>\\s*1003/s'],
+            9 => ["Display Grocery item_name, category, and quantity", null, "/SELECT\\s+.*ITEM_NAME.*CATEGORY.*QUANTITY.*FROM\\s+.*ITEMS.*GROCERY/s"],
+            10 => ['Display item_name and price below 100.00', null, '/SELECT\\s+.*ITEM_NAME.*PRICE.*FROM\\s+.*ITEMS.*PRICE\\s*<\\s*100/s'],
+            11 => ["Display suppliers located in Cebu City", null, "/SELECT\\s+.*FROM\\s+.*SUPPLIERS.*CEBU\\s+CITY/s"],
+            12 => ['Complete Palmolive Shampoo record in one UPDATE', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Palmolive Shampoo' AND description='Green shampoo 180ml' AND category='Toiletries' AND quantity=35", '/UPDATE\\s+.*ITEMS.*GREEN\\s+SHAMPOO\\s+180ML.*TOILETRIES/s'],
+            13 => ['Change Century Tuna quantity to 120', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Century Tuna' AND quantity=120", '/UPDATE\\s+.*ITEMS.*CENTURY\\s+TUNA.*120/s'],
+            14 => ['Change Bright Goods Inc. city to Talisay City', "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name='Bright Goods Inc.' AND city='Talisay City'", '/UPDATE\\s+.*SUPPLIERS.*TALISAY\\s+CITY/s'],
+            15 => ['Remove Tender Care from items', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Tender Care'", '/DELETE\\s+FROM\\s+.*ITEMS.*TENDER\\s+CARE/s'],
+            16 => ['Delete items with quantity below 40 and confirm remaining rows', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE quantity < 40", '/DELETE\\s+FROM\\s+.*ITEMS.*QUANTITY\\s*<\\s*40/s']
+        ][$task];
+        $log = $this->a2Log($logs, $spec[2]); $checks = [];
+        if ($spec[1]) { $count = (int)$this->pdo->query($spec[1])->fetchColumn(); if ($task === 15 || $task === 16) $count = $count === 0 ? 1 : 0; $checks[] = $this->a2Check('Final database state matches the required result', (bool)$count, $count ? 'Verified' : 'Not found or not yet applied'); }
+        $checks[] = $this->a2Check('Required SQL statement is recorded in the MySQL general log', (bool)$log, $log ? 'Statement found' : 'No matching statement found');
+        return $this->a2Result('Task ' . $task . ' - ' . $spec[0], $checks, $log);
+    }
+
+    private function a2UnavailableTasks($missingTables) {
+        $tasks = [];
+        $detail = 'Cannot evaluate because required table(s) are missing: ' . implode(', ', $missingTables) . '.';
+        for ($task = 1; $task <= 16; $task++) {
+            $tasks['task' . $task] = [
+                'title' => 'Task ' . $task,
+                'checks' => [$this->a2Check('Activity 2 prerequisite tables exist', false, $detail)],
+                'score_percent' => 0,
+                'weight' => 6.25,
+                'earned_score' => 0,
+                'log_verified' => false,
+                'log_entry' => null
+            ];
+        }
+        return $tasks;
+    }
+
+    private function a2Check($name, $passed, $detail) { return ['name'=>$name, 'passed'=>(bool)$passed, 'detail'=>$detail]; }
+    private function a2Result($title, $checks, $log) { $passed = count(array_filter($checks, function($c){ return $c['passed']; })); return ['title'=>$title, 'checks'=>$checks, 'score_percent'=>round(100 * $passed / max(1, count($checks))), 'log_verified'=>(bool)$log, 'log_entry'=>$log ? $log['argument'] : null]; }
+    private function a2Log($logs, $pattern) { foreach ($logs as $entry) if (preg_match($pattern, strtoupper($entry['argument'] ?? ''))) return $entry; return false; }
+    private function a2AutoId($db, $table, $column) { $c=$this->getColumn($db,$table,$column); return $c && strpos(strtolower($c['EXTRA']), 'auto_increment') !== false && strpos(strtolower($c['COLUMN_KEY']), 'pri') !== false; }
+    private function a2ColumnMatches($db,$table,$column,$type,$notNull=false) { $c=$this->getColumn($db,$table,$column); return $c && strtolower($c['DATA_TYPE']) === $type && (!$notNull || $c['IS_NULLABLE'] === 'NO'); }
+    private function a2ColumnSet($db,$table,$columns) { foreach ($columns as $name=>$type) if (!$this->a2ColumnMatches($db,$table,$name,$type)) return $this->a2Check("$table has required columns", false, "Missing or invalid $name"); return $this->a2Check("$table has all required columns", true, 'Verified through information_schema'); }
 
     /**
      * Fetch General Logs for student user/database

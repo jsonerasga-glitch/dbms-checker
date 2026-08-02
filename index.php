@@ -27,7 +27,7 @@ $cfg = get_config();
             </div>
             <div class="brand-title">
                 <h1>DBMS Student Evaluator</h1>
-                <p>Activity 1 Checker & MySQL Query Log Verifier</p>
+                <p>Multi-activity Checker & MySQL Query Log Verifier</p>
             </div>
         </div>
 
@@ -70,6 +70,13 @@ $cfg = get_config();
                         </div>
                         <form id="single-check-form">
                             <div class="form-group">
+                                <label for="activity-id">Activity</label>
+                                <select id="activity-id" class="form-control" onchange="updateActivityInfo()">
+                                    <option value="activity1">Activity 1 - Library Database</option>
+                                    <option value="activity2">Activity 2 - Suppliers & Items CRUD</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label for="single-db-name">Student Database Name / Username</label>
                                 <input type="text" id="single-db-name" class="form-control" placeholder="e.g. 2_cs4_delacruz" value="2_cs4_delacruz" required>
                                 <small style="color: var(--text-muted); display: block; margin-top: 4px;">
@@ -91,11 +98,11 @@ $cfg = get_config();
                     </div>
 
                     <div class="glass-card" style="font-size: 0.85rem;">
-                        <h4 style="margin-bottom: 0.5rem; color: var(--text-highlight);"><i class="fas fa-book"></i> Activity 1 Summary</h4>
-                        <p style="color: var(--text-muted); line-height: 1.5; margin-bottom: 0.5rem;">
+                        <h4 id="activity-summary-title" style="margin-bottom: 0.5rem; color: var(--text-highlight);"><i class="fas fa-book"></i> Activity 1 Summary</h4>
+                        <p id="activity-summary-description" style="color: var(--text-muted); line-height: 1.5; margin-bottom: 0.5rem;">
                             Verifies student implementation for Library Database:
                         </p>
-                        <ul style="color: var(--text-muted); padding-left: 1.2rem; line-height: 1.6;">
+                        <ul id="activity-summary-list" style="color: var(--text-muted); padding-left: 1.2rem; line-height: 1.6;">
                             <li><strong>Task 1:</strong> <code>tbl_authors</code> (PK auto-inc, columns)</li>
                             <li><strong>Task 2:</strong> <code>ALTER tbl_authors ADD biography TEXT</code></li>
                             <li><strong>Task 3:</strong> <code>tbl_members</code> (PK auto-inc, columns)</li>
@@ -133,6 +140,10 @@ $cfg = get_config();
                         </p>
                     </div>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <select id="batch-activity-id" class="form-control" style="width: auto; min-width: 250px;" aria-label="Activity to batch check">
+                            <option value="activity1">Activity 1 - Library Database</option>
+                            <option value="activity2">Activity 2 - Suppliers & Items CRUD</option>
+                        </select>
                         <button class="btn" onclick="loadBatchDatabases()"><i class="fas fa-rotate"></i> Refresh</button>
                         <button class="btn btn-success" onclick="exportBatchCSV(false)" title="Export scores and summary statistics without query logs"><i class="fas fa-file-excel"></i> Export CSV (Without Logs)</button>
                         <button class="btn btn-primary" onclick="exportBatchCSV(true)" title="Export scores along with per-task SQL log proofs and full query history"><i class="fas fa-file-invoice"></i> Export CSV (With Logs)</button>

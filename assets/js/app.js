@@ -145,6 +145,7 @@ function createDemoStudent(mode, dbName) {
 
 // Run Single Student Check
 function runSingleCheck(dbName) {
+    const activityId = document.getElementById('activity-id')?.value || 'activity1';
     const resultsContainer = document.getElementById('single-check-results');
     resultsContainer.innerHTML = `
         <div class="glass-card" style="text-align: center; padding: 3rem;">
@@ -154,7 +155,7 @@ function runSingleCheck(dbName) {
         </div>
     `;
 
-    fetch(`api.php?action=check_student&db_name=${encodeURIComponent(dbName)}`)
+    fetch(`api.php?action=check_student&activity_id=${encodeURIComponent(activityId)}&db_name=${encodeURIComponent(dbName)}`)
         .then(res => res.json())
         .then(res => {
             if (res.success) {
@@ -218,6 +219,7 @@ function renderSingleResult(data) {
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
                         <div>
                             <h2 style="font-size: 1.5rem; margin-bottom: 0.25rem;">${escapeHtml(data.db_name)}</h2>
+                            <p style="color: var(--accent-primary); font-size: 0.85rem; margin-bottom: 0.25rem;">${escapeHtml(data.activity_name || 'Activity Evaluation')}</p>
                             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.75rem;">Checked on ${data.checked_at}</p>
                         </div>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -325,7 +327,7 @@ function runBatchCheck(dbList) {
     fetch('api.php?action=batch_check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'databases=' + encodeURIComponent(JSON.stringify(dbList))
+        body: 'activity_id=' + encodeURIComponent(document.getElementById('batch-activity-id')?.value || 'activity1') + '&databases=' + encodeURIComponent(JSON.stringify(dbList))
     })
     .then(res => res.json())
     .then(res => {
@@ -392,6 +394,23 @@ function viewStudentDetail(dbName) {
     runSingleCheck(dbName);
 }
 
+function updateActivityInfo() {
+    const activityId = document.getElementById('activity-id')?.value || 'activity1';
+    const title = document.getElementById('activity-summary-title');
+    const description = document.getElementById('activity-summary-description');
+    const list = document.getElementById('activity-summary-list');
+    if (!title || !description || !list) return;
+    if (activityId === 'activity2') {
+        title.innerHTML = '<i class="fas fa-boxes-stacked"></i> Activity 2 Summary';
+        description.textContent = 'Verifies the suppliers and items CRUD exercise, including required query-log evidence.';
+        list.innerHTML = '<li><strong>Task 1:</strong> Create <code>suppliers</code> and <code>items</code></li><li><strong>Tasks 2–5:</strong> Required single and multiple-row INSERT statements</li><li><strong>Tasks 6–11:</strong> Required SELECT queries</li><li><strong>Tasks 12–16:</strong> Required UPDATE and DELETE operations</li>';
+    } else {
+        title.innerHTML = '<i class="fas fa-book"></i> Activity 1 Summary';
+        description.textContent = 'Verifies student implementation for Library Database:';
+        list.innerHTML = '<li><strong>Task 1:</strong> <code>tbl_authors</code> (PK auto-inc, columns)</li><li><strong>Task 2:</strong> <code>ALTER tbl_authors ADD biography TEXT</code></li><li><strong>Task 3:</strong> <code>tbl_members</code> (PK auto-inc, columns)</li><li><strong>Task 4:</strong> <code>ALTER tbl_members MODIFY email_address VARCHAR(150) NOT NULL</code></li><li><strong>Task 5:</strong> <code>tbl_books</code> (FK to authors, ENUM format)</li><li><strong>Task 6:</strong> <code>tbl_borrow_transactions</code> (FKs to books & members)</li>';
+    }
+}
+
 /**
  * EXPORT 1: Batch Export (With Logs or Without Logs)
  */
@@ -402,6 +421,7 @@ function exportBatchCSV(includeLogs = false) {
     }
 
     let csvRows = [];
+    const taskKeys = Object.keys(cachedBatchResults[0]?.tasks || {});
     
     // Define Headers based on includeLogs option
     let headers = [];
@@ -412,12 +432,7 @@ function exportBatchCSV(includeLogs = false) {
             "Total Points Earned",
             "Grade Label",
             "Tasks Passed Count",
-            "Task 1 Log Proof (Create authors)",
-            "Task 2 Log Proof (Alter authors)",
-            "Task 3 Log Proof (Create members)",
-            "Task 4 Log Proof (Alter members)",
-            "Task 5 Log Proof (Create books)",
-            "Task 6 Log Proof (Create transactions)",
+            ...taskKeys.map(key => `${cachedBatchResults[0].tasks[key].title} - Log Proof`),
             "Total Executed SQL Logs Count",
             "All Executed Query Logs",
             "Checked At Timestamp"
@@ -448,12 +463,7 @@ function exportBatchCSV(includeLogs = false) {
 
         let row = [];
         if (includeLogs) {
-            const t1Log = r.tasks?.task1?.log_entry || (r.tasks?.task1?.log_verified ? 'Verified' : 'None');
-            const t2Log = r.tasks?.task2?.log_entry || (r.tasks?.task2?.log_verified ? 'Verified' : 'None');
-            const t3Log = r.tasks?.task3?.log_entry || (r.tasks?.task3?.log_verified ? 'Verified' : 'None');
-            const t4Log = r.tasks?.task4?.log_entry || (r.tasks?.task4?.log_verified ? 'Verified' : 'None');
-            const t5Log = r.tasks?.task5?.log_entry || (r.tasks?.task5?.log_verified ? 'Verified' : 'None');
-            const t6Log = r.tasks?.task6?.log_entry || (r.tasks?.task6?.log_verified ? 'Verified' : 'None');
+            const taskLogs = taskKeys.map(key => r.tasks?.[key]?.log_entry || (r.tasks?.[key]?.log_verified ? 'Verified' : 'None'));
 
             let allQueries = '';
             if (r.logs_found && r.logs_found.length > 0) {
@@ -467,13 +477,8 @@ function exportBatchCSV(includeLogs = false) {
                 r.percentage + '%',
                 r.total_score + ' / ' + r.max_score,
                 gradeLabel,
-                passedTasks + ' / 6',
-                t1Log,
-                t2Log,
-                t3Log,
-                t4Log,
-                t5Log,
-                t6Log,
+                passedTasks + ' / ' + Object.keys(r.tasks || {}).length,
+                ...taskLogs,
                 r.logs_found ? r.logs_found.length : 0,
                 allQueries,
                 r.checked_at || ''
@@ -484,7 +489,7 @@ function exportBatchCSV(includeLogs = false) {
                 r.percentage + '%',
                 r.total_score + ' / ' + r.max_score,
                 gradeLabel,
-                passedTasks + ' / 6',
+                passedTasks + ' / ' + Object.keys(r.tasks || {}).length,
                 r.checked_at || ''
             ];
         }
