@@ -93,7 +93,7 @@ try {
         case 'check_student':
             $dbName = trim($_GET['db_name'] ?? $_POST['db_name'] ?? '');
             $activityId = trim($_GET['activity_id'] ?? $_POST['activity_id'] ?? 'activity1');
-            if (!in_array($activityId, ['activity1', 'activity2'], true)) {
+            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4'], true)) {
                 throw new Exception("Unknown activity '{$activityId}'.");
             }
             if (!$dbName) {
@@ -116,7 +116,7 @@ try {
             $cfg = get_config();
             $checker = new ActivityChecker($pdo, $cfg);
             $activityId = trim($_POST['activity_id'] ?? $_GET['activity_id'] ?? 'activity1');
-            if (!in_array($activityId, ['activity1', 'activity2'], true)) {
+            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4'], true)) {
                 throw new Exception("Unknown activity '{$activityId}'.");
             }
 
@@ -141,7 +141,26 @@ try {
             foreach ($dbsParam as $db) {
                 $db = trim($db);
                 if ($db) {
-                    $results[] = $checker->checkActivity($activityId, $db);
+                    try {
+                        $results[] = $checker->checkActivity($activityId, $db);
+                    } catch (Exception $e) {
+                        // A student's DB may have missing/malformed tables or columns that
+                        // trip a raw query; skip that student instead of failing the batch.
+                        $results[] = [
+                            'activity_id' => $activityId,
+                            'db_name' => $db,
+                            'db_exists' => null,
+                            'user_exists' => null,
+                            'total_score' => 0,
+                            'max_score' => 100,
+                            'percentage' => 0,
+                            'tasks' => [],
+                            'logs_found' => [],
+                            'general_log_enabled' => false,
+                            'checked_at' => date('Y-m-d H:i:s'),
+                            'error' => 'Failed to check this database: ' . $e->getMessage()
+                        ];
+                    }
                 }
             }
 
@@ -184,7 +203,7 @@ try {
                 throw new Exception('Please log in as a student first.');
             }
             $activityId = trim($_GET['activity_id'] ?? $_POST['activity_id'] ?? 'activity1');
-            if (!in_array($activityId, ['activity1', 'activity2'], true)) throw new Exception("Unknown activity '{$activityId}'.");
+            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4'], true)) throw new Exception("Unknown activity '{$activityId}'.");
             $checker = new ActivityChecker(get_pdo_connection(), get_config());
             echo json_encode(['success' => true, 'data' => $checker->checkActivity($activityId, $_SESSION['student_db'])]);
             break;

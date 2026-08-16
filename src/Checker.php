@@ -17,6 +17,12 @@ class ActivityChecker {
         if ($activityId === 'activity2') {
             return $this->checkActivity2($dbName);
         }
+        if ($activityId === 'activity3') {
+            return $this->checkActivity3($dbName);
+        }
+        if ($activityId === 'activity4') {
+            return $this->checkActivity4($dbName);
+        }
         return $this->checkActivity1($dbName);
     }
 
@@ -92,7 +98,11 @@ class ActivityChecker {
         return $result;
     }
 
-    /** Activity 2: Suppliers and items CRUD exercise. */
+    /**
+     * Activity 2: Suppliers and items CRUD exercise.
+     * Verified purely from final database state (schema + data) per the
+     * Activity 2 spec - the MySQL general query log is not consulted.
+     */
     public function checkActivity2($dbName) {
         $result = [
             'activity_id' => 'activity2', 'activity_name' => 'Activity 2 - Suppliers and Items CRUD',
@@ -105,9 +115,6 @@ class ActivityChecker {
         if (!$stmt->fetch()) { $result['error'] = "Database '{$dbName}' does not exist on MySQL server."; return $result; }
         $result['db_exists'] = true;
         try { $u = $this->pdo->prepare('SELECT User FROM mysql.user WHERE User = ?'); $u->execute([$dbName]); $result['user_exists'] = (bool)$u->fetch(); } catch (Exception $e) { $result['user_exists'] = true; }
-        $logs = $this->fetchStudentGeneralLogs($dbName);
-        $result['general_log_enabled'] = $logs['enabled'];
-        $result['logs_found'] = $logs['entries'];
 
         // Activity 2 queries depend on both tables. Avoid querying a missing
         // table and return a clear zero-score result instead of an API error.
@@ -121,23 +128,27 @@ class ActivityChecker {
             return $result;
         }
 
+        // Only tasks with a checkable final-state outcome are scored. Tasks
+        // 6-11 in the spec are read-only SELECT/display tasks that leave no
+        // trace in the data, so they are not part of the scored set.
         $tasks = [
-            'task1' => $this->a2Schema($dbName, $logs['entries']),
-            'task2' => $this->a2Task($dbName, $logs['entries'], 2), 'task3' => $this->a2Task($dbName, $logs['entries'], 3),
-            'task4' => $this->a2Task($dbName, $logs['entries'], 4), 'task5' => $this->a2Task($dbName, $logs['entries'], 5),
-            'task6' => $this->a2Task($dbName, $logs['entries'], 6), 'task7' => $this->a2Task($dbName, $logs['entries'], 7),
-            'task8' => $this->a2Task($dbName, $logs['entries'], 8), 'task9' => $this->a2Task($dbName, $logs['entries'], 9),
-            'task10' => $this->a2Task($dbName, $logs['entries'], 10), 'task11' => $this->a2Task($dbName, $logs['entries'], 11),
-            'task12' => $this->a2Task($dbName, $logs['entries'], 12), 'task13' => $this->a2Task($dbName, $logs['entries'], 13),
-            'task14' => $this->a2Task($dbName, $logs['entries'], 14), 'task15' => $this->a2Task($dbName, $logs['entries'], 15),
-            'task16' => $this->a2Task($dbName, $logs['entries'], 16)
+            'task1'  => $this->a2Schema($dbName),
+            'task2'  => $this->a2Task($dbName, 2),
+            'task3'  => $this->a2Task($dbName, 3),
+            'task4'  => $this->a2Task($dbName, 4),
+            'task5'  => $this->a2Task($dbName, 5),
+            'task12' => $this->a2Task($dbName, 12),
+            'task13' => $this->a2Task($dbName, 13),
+            'task14' => $this->a2Task($dbName, 14),
+            'task15' => $this->a2Task($dbName, 15),
+            'task16' => $this->a2Task($dbName, 16),
         ];
-        foreach ($tasks as &$task) { $task['weight'] = 6.25; $task['earned_score'] = round($task['score_percent'] / 16, 2); $result['total_score'] += $task['earned_score']; }
+        foreach ($tasks as &$task) { $task['weight'] = 10; $task['earned_score'] = round($task['score_percent'] / 10, 2); $result['total_score'] += $task['earned_score']; }
         $result['tasks'] = $tasks; $result['total_score'] = round($result['total_score'], 2); $result['percentage'] = $result['total_score'];
         return $result;
     }
 
-    private function a2Schema($dbName, $logs) {
+    private function a2Schema($dbName) {
         $checks = [];
         $supplier = $this->tableExists($dbName, 'suppliers'); $items = $this->tableExists($dbName, 'items');
         $checks[] = $this->a2Check('Table suppliers exists', $supplier, $supplier ? 'Found suppliers' : 'Table missing');
@@ -148,43 +159,108 @@ class ActivityChecker {
         $checks[] = $this->a2Check('items primary key is auto-increment item_id', $this->a2AutoId($dbName, 'items', 'item_id'), 'Verified through information_schema');
         $checks[] = $this->a2Check('items.price is DECIMAL and NOT NULL', $this->a2ColumnMatches($dbName, 'items', 'price', 'decimal', true), 'Verified through information_schema');
         $checks[] = $this->a2Check('items.quantity is INT and NOT NULL', $this->a2ColumnMatches($dbName, 'items', 'quantity', 'int', true), 'Verified through information_schema');
-        $log = $this->a2Log($logs, '/CREATE\\s+TABLE\\s+.*(SUPPLIERS|ITEMS)/');
-        return $this->a2Result('Task 1 - Create suppliers and items tables', $checks, $log);
+        return $this->a2Result('Task 1 - Create suppliers and items tables', $checks);
     }
 
-    private function a2Task($dbName, $logs, $task) {
+    /**
+     * Activity 2 data tasks, verified strictly against the LATEST expected
+     * record state (not query logs). Tasks whose inserted rows are later
+     * modified/deleted by a subsequent task (e.g. task 3's Bright Goods Inc.
+     * has its city changed in task 14; task 5's Century Tuna insert isn't
+     * present here since qty is re-checked in task 13) only assert the
+     * fields that remain stable, so an earlier task doesn't fail just
+     * because a later task correctly changed the data.
+     */
+    private function a2Task($dbName, $task) {
         $spec = [
-            2 => ['Add Alpha Trading using a whole-table INSERT', "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name='Alpha Trading' AND contact_number='09171234567' AND city='Cebu City'", '/INSERT\\s+INTO\\s+.*SUPPLIERS/'],
-            3 => ['Add three suppliers with one multiple-row INSERT', "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name IN ('Bright Goods Inc.','Circle Distributors','Delta Supply House')", '/INSERT\\s+INTO\\s+.*SUPPLIERS.*\\),\\s*\\(/s'],
-            4 => ['Add Palmolive Shampoo using specific columns', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Palmolive Shampoo' AND price=145 AND supplier_id=1", '/INSERT\\s+INTO\\s+.*ITEMS.*PALMOLIVE\\s+SHAMPOO/s'],
-            5 => ['Add five items with one multiple-row INSERT', null, '/INSERT\\s+INTO\\s+.*ITEMS.*(DOVE\\s+SOAP|SAFEGUARD).*\\),\\s*\\(/s'],
-            6 => ['Display all rows and columns of items', null, '/SELECT\\s+\\*\\s+FROM\\s+.*ITEMS/'],
-            7 => ['Display item_name and price for all items', null, '/SELECT\\s+.*ITEM_NAME.*PRICE.*FROM\\s+.*ITEMS/s'],
-            8 => ['Display items with item_id greater than 1003', null, '/SELECT\\s+.*FROM\\s+.*ITEMS.*ITEM_ID\\s*>\\s*1003/s'],
-            9 => ["Display Grocery item_name, category, and quantity", null, "/SELECT\\s+.*ITEM_NAME.*CATEGORY.*QUANTITY.*FROM\\s+.*ITEMS.*GROCERY/s"],
-            10 => ['Display item_name and price below 100.00', null, '/SELECT\\s+.*ITEM_NAME.*PRICE.*FROM\\s+.*ITEMS.*PRICE\\s*<\\s*100/s'],
-            11 => ["Display suppliers located in Cebu City", null, "/SELECT\\s+.*FROM\\s+.*SUPPLIERS.*CEBU\\s+CITY/s"],
-            12 => ['Complete Palmolive Shampoo record in one UPDATE', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Palmolive Shampoo' AND description='Green shampoo 180ml' AND category='Toiletries' AND quantity=35", '/UPDATE\\s+.*ITEMS.*GREEN\\s+SHAMPOO\\s+180ML.*TOILETRIES/s'],
-            13 => ['Change Century Tuna quantity to 120', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Century Tuna' AND quantity=120", '/UPDATE\\s+.*ITEMS.*CENTURY\\s+TUNA.*120/s'],
-            14 => ['Change Bright Goods Inc. city to Talisay City', "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name='Bright Goods Inc.' AND city='Talisay City'", '/UPDATE\\s+.*SUPPLIERS.*TALISAY\\s+CITY/s'],
-            15 => ['Remove Tender Care from items', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Tender Care'", '/DELETE\\s+FROM\\s+.*ITEMS.*TENDER\\s+CARE/s'],
-            16 => ['Delete items with quantity below 40 and confirm remaining rows', "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE quantity < 40", '/DELETE\\s+FROM\\s+.*ITEMS.*QUANTITY\\s*<\\s*40/s']
+            2  => ['Add Alpha Trading using a whole-table INSERT',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name='Alpha Trading' AND contact_number='09171234567' AND city='Cebu City'", 1],
+            3  => ['Add three suppliers with one multiple-row INSERT',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE
+                        (supplier_name='Circle Distributors' AND contact_number='09399998888' AND city='Lapu-Lapu City')
+                     OR (supplier_name='Delta Supply House' AND contact_number='09055556666' AND city='Cebu City')
+                     OR (supplier_name='Bright Goods Inc.' AND contact_number='09283334444')", 3],
+            4  => ['Add Palmolive Shampoo using specific columns',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Palmolive Shampoo' AND price=145 AND supplier_id=1", 1],
+            5  => ['Add five items with one multiple-row INSERT',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE
+                        (item_name='Dove Soap' AND description='White beauty bar' AND category='Toiletries' AND price=62.50 AND quantity=40 AND supplier_id=1)
+                     OR (item_name='Safeguard' AND description='Antibacterial soap' AND category='Toiletries' AND price=48.75 AND quantity=60 AND supplier_id=2)", 2],
+            12 => ['Complete Palmolive Shampoo record in one UPDATE',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Palmolive Shampoo' AND description='Green shampoo 180ml' AND category='Toiletries' AND quantity=35", 1],
+            13 => ['Change Century Tuna quantity to 120',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Century Tuna' AND quantity=120", 1],
+            14 => ['Change Bright Goods Inc. city to Talisay City',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`suppliers` WHERE supplier_name='Bright Goods Inc.' AND city='Talisay City'", 1],
+            15 => ['Remove Tender Care from items',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name='Tender Care'", 0],
+            // Palmolive Shampoo is deliberately set to quantity 35 in task 12 (< 40),
+            // so it is excluded here rather than penalizing a correct task 12.
+            16 => ['Delete items with quantity below 40 and confirm remaining rows',
+                   "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE quantity < 40 AND item_name <> 'Palmolive Shampoo'", 0],
         ][$task];
-        $log = $this->a2Log($logs, $spec[2]); $checks = [];
-        if ($spec[1]) { $count = (int)$this->pdo->query($spec[1])->fetchColumn(); if ($task === 15 || $task === 16) $count = $count === 0 ? 1 : 0; $checks[] = $this->a2Check('Final database state matches the required result', (bool)$count, $count ? 'Verified' : 'Not found or not yet applied'); }
-        $checks[] = $this->a2Check('Required SQL statement is recorded in the MySQL general log', (bool)$log, $log ? 'Statement found' : 'No matching statement found');
-        return $this->a2Result('Task ' . $task . ' - ' . $spec[0], $checks, $log);
+        [$title, $sql, $expected] = $spec;
+        $checks = [];
+        try {
+            $count = (int)$this->pdo->query($sql)->fetchColumn();
+            $passed = $expected === 0 ? ($count === 0) : ($count >= $expected);
+            $detail = $passed ? 'Verified' : ($expected === 0 ? "{$count} row(s) still violate the requirement" : 'Not found or not yet applied');
+
+            // Tasks 4 & 12 require the Palmolive Shampoo row, but a correctly
+            // run task 16 (delete quantity < 40) legitimately removes it too,
+            // since task 12 sets its quantity to 35. If the row is gone,
+            // accept other evidence that a quantity-below-40 cleanup ran
+            // (Tender Care and/or Milo 300g also missing) as a stand-in for
+            // "this row existed correctly before that cleanup deleted it."
+            if (!$passed && ($task === 4 || $task === 12) && $this->a2PalmoliveSweptByCleanup($dbName)) {
+                $passed = true;
+                $detail = 'Palmolive Shampoo record not present, but quantity-below-40 cleanup evidently ran (task 16) and would have removed it too; not penalized.';
+            }
+
+            $checks[] = $this->a2Check('Final database state matches the required result', $passed, $detail);
+        } catch (Exception $e) {
+            // Table/column required for this check is missing or malformed on the student's DB.
+            $checks[] = $this->a2Check('Final database state matches the required result', false, 'Could not verify: required table or column is missing on this database.');
+        }
+        return $this->a2Result('Task ' . $task . ' - ' . $title, $checks);
+    }
+
+    /**
+     * True if there's reasonable non-log evidence that Palmolive Shampoo once
+     * existed and was removed by the task 16 quantity<40 cleanup, rather than
+     * never having been created at all:
+     *  - Tender Care and Milo 300g (also quantity < 40) are both gone, and
+     *  - items.AUTO_INCREMENT has advanced past 6, meaning at least 6 rows
+     *    were ever inserted (task 4's 1 + task 5's 5) - the counter only
+     *    moves forward, so this holds even after later deletes.
+     */
+    private function a2PalmoliveSweptByCleanup($dbName) {
+        try {
+            $cleaned = (int)$this->pdo->query(
+                "SELECT COUNT(*) FROM `{$dbName}`.`items` WHERE item_name IN ('Tender Care', 'Milo 300g')"
+            )->fetchColumn() === 0;
+            if (!$cleaned) return false;
+
+            $stmt = $this->pdo->prepare(
+                "SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'items'"
+            );
+            $stmt->execute([$dbName]);
+            $autoIncrement = (int)$stmt->fetchColumn();
+            return $autoIncrement >= 7;
+        } catch (Exception $e) {
+            return false;
+        }
     }
 
     private function a2UnavailableTasks($missingTables) {
         $tasks = [];
         $detail = 'Cannot evaluate because required table(s) are missing: ' . implode(', ', $missingTables) . '.';
-        for ($task = 1; $task <= 16; $task++) {
+        foreach ([1, 2, 3, 4, 5, 12, 13, 14, 15, 16] as $task) {
             $tasks['task' . $task] = [
                 'title' => 'Task ' . $task,
                 'checks' => [$this->a2Check('Activity 2 prerequisite tables exist', false, $detail)],
                 'score_percent' => 0,
-                'weight' => 6.25,
+                'weight' => 10,
                 'earned_score' => 0,
                 'log_verified' => false,
                 'log_entry' => null
@@ -194,8 +270,7 @@ class ActivityChecker {
     }
 
     private function a2Check($name, $passed, $detail) { return ['name'=>$name, 'passed'=>(bool)$passed, 'detail'=>$detail]; }
-    private function a2Result($title, $checks, $log) { $passed = count(array_filter($checks, function($c){ return $c['passed']; })); return ['title'=>$title, 'checks'=>$checks, 'score_percent'=>round(100 * $passed / max(1, count($checks))), 'log_verified'=>(bool)$log, 'log_entry'=>$log ? $log['argument'] : null]; }
-    private function a2Log($logs, $pattern) { foreach ($logs as $entry) if (preg_match($pattern, strtoupper($entry['argument'] ?? ''))) return $entry; return false; }
+    private function a2Result($title, $checks) { $passed = count(array_filter($checks, function($c){ return $c['passed']; })); return ['title'=>$title, 'checks'=>$checks, 'score_percent'=>round(100 * $passed / max(1, count($checks))), 'log_verified'=>false, 'log_entry'=>null]; }
     private function a2AutoId($db, $table, $column) { $c=$this->getColumn($db,$table,$column); return $c && strpos(strtolower($c['EXTRA']), 'auto_increment') !== false && strpos(strtolower($c['COLUMN_KEY']), 'pri') !== false; }
     private function a2ColumnMatches($db,$table,$column,$type,$notNull=false) { $c=$this->getColumn($db,$table,$column); return $c && strtolower($c['DATA_TYPE']) === $type && (!$notNull || $c['IS_NULLABLE'] === 'NO'); }
     private function a2ColumnSet($db,$table,$columns) { foreach ($columns as $name=>$type) if (!$this->a2ColumnMatches($db,$table,$name,$type)) return $this->a2Check("$table has required columns", false, "Missing or invalid $name"); return $this->a2Check("$table has all required columns", true, 'Verified through information_schema'); }
@@ -344,12 +419,12 @@ class ActivityChecker {
     private function checkTask2_AlterAuthors($dbName, $logs) {
         $checks = [];
         $passedCount = 0;
-        $totalChecks = 2;
+        $totalChecks = 1;
 
         $table = 'tbl_authors';
         $colBio = $this->getColumn($dbName, $table, 'biography');
         $bioOk = $colBio && (strpos(strtolower($colBio['DATA_TYPE']), 'text') !== false || strpos(strtolower($colBio['DATA_TYPE']), 'varchar') !== false);
-        
+
         $checks[] = [
             'name' => "Column 'biography' exists in tbl_authors with TEXT data type",
             'passed' => (bool)$bioOk,
@@ -357,21 +432,12 @@ class ActivityChecker {
         ];
         if ($bioOk) $passedCount++;
 
-        // Log check for ALTER TABLE
-        $alterLog = $this->findInLogs($logs, 'ALTER TABLE', 'tbl_authors');
-        $checks[] = [
-            'name' => "Execution log contains ALTER TABLE statement for tbl_authors",
-            'passed' => (bool)$alterLog,
-            'detail' => $alterLog ? "Verified in MySQL log: " . substr($alterLog['argument'], 0, 80) . "..." : "No ALTER TABLE query recorded in log for tbl_authors"
-        ];
-        if ($alterLog) $passedCount++;
-
         return [
             'title' => 'Task 2 - Alter tbl_authors (Add biography TEXT)',
             'checks' => $checks,
             'score_percent' => round(($passedCount / $totalChecks) * 100),
-            'log_verified' => (bool)$alterLog,
-            'log_entry' => $alterLog ? $alterLog['argument'] : null
+            'log_verified' => false,
+            'log_entry' => null
         ];
     }
 
@@ -447,12 +513,12 @@ class ActivityChecker {
     private function checkTask4_AlterMembers($dbName, $logs) {
         $checks = [];
         $passedCount = 0;
-        $totalChecks = 3;
+        $totalChecks = 2;
 
         $table = 'tbl_members';
         $colEmail = $this->getColumn($dbName, $table, 'email_address');
-        
-        $lengthOk = $colEmail && strpos(strtolower($colEmail['DATA_TYPE']), 'varchar') !== false 
+
+        $lengthOk = $colEmail && strpos(strtolower($colEmail['DATA_TYPE']), 'varchar') !== false
                              && ($colEmail['CHARACTER_MAXIMUM_LENGTH'] >= 150);
         $checks[] = [
             'name' => "Column 'email_address' modified to VARCHAR(150)",
@@ -469,21 +535,12 @@ class ActivityChecker {
         ];
         if ($nullOk) $passedCount++;
 
-        // Log check for ALTER TABLE tbl_members
-        $alterLog = $this->findInLogs($logs, 'ALTER TABLE', 'tbl_members');
-        $checks[] = [
-            'name' => "Execution log contains ALTER TABLE statement for tbl_members",
-            'passed' => (bool)$alterLog,
-            'detail' => $alterLog ? "Verified in MySQL log: " . substr($alterLog['argument'], 0, 80) . "..." : "No ALTER TABLE query recorded in log for tbl_members"
-        ];
-        if ($alterLog) $passedCount++;
-
         return [
             'title' => 'Task 4 - Alter tbl_members (widen email_address to VARCHAR(150) NOT NULL)',
             'checks' => $checks,
             'score_percent' => round(($passedCount / $totalChecks) * 100),
-            'log_verified' => (bool)$alterLog,
-            'log_entry' => $alterLog ? $alterLog['argument'] : null
+            'log_verified' => false,
+            'log_entry' => null
         ];
     }
 
@@ -667,5 +724,207 @@ class ActivityChecker {
         $fk = $stmt->fetch();
         if (!$fk) return false;
         return (strtolower($fk['REFERENCED_TABLE_NAME']) === strtolower($refTable) && strtolower($fk['REFERENCED_COLUMN_NAME']) === strtolower($refCol));
+    }
+
+    /**
+     * Activity 3: SELECT statement exercise (Registrar's Office / dbms_activity).
+     * Students log the SQL they used, per task, into their own submission
+     * table. Verified by re-running both the student's logged SQL and the
+     * instructor's reference SQL (from dbms_activity_answer_key) against the
+     * shared dbms_activity database and comparing actual results.
+     */
+    public function checkActivity3($dbName) {
+        return $this->a34Check($dbName, 'activity_20260805', 'activity3_answerkey', 'Activity 3 - SELECT Statements (Registrar Records)');
+    }
+
+    /**
+     * Activity 4: Logical operators & aggregate functions exercise
+     * (Springview Resort / dbms_activity). Same verification approach as
+     * Activity 3, against dbms_activity_answer_key.activity4_answerkey.
+     */
+    public function checkActivity4($dbName) {
+        return $this->a34Check($dbName, 'activity_20260817', 'activity4_answerkey', 'Activity 4 - Logical Operators & Aggregate Functions (Resort Records)');
+    }
+
+    /** Shared implementation for the SELECT-statement-logging activities (3 & 4). */
+    private function a34Check($dbName, $submissionTable, $answerKeyTable, $activityName) {
+        $activityId = $answerKeyTable === 'activity3_answerkey' ? 'activity3' : 'activity4';
+        $result = [
+            'activity_id' => $activityId, 'activity_name' => $activityName,
+            'db_name' => $dbName, 'db_exists' => false, 'user_exists' => false,
+            'total_score' => 0, 'max_score' => 100, 'percentage' => 0, 'tasks' => [],
+            'logs_found' => [], 'general_log_enabled' => false, 'checked_at' => date('Y-m-d H:i:s')
+        ];
+        $stmt = $this->pdo->prepare('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?');
+        $stmt->execute([$dbName]);
+        if (!$stmt->fetch()) { $result['error'] = "Database '{$dbName}' does not exist on MySQL server."; return $result; }
+        $result['db_exists'] = true;
+        try { $u = $this->pdo->prepare('SELECT User FROM mysql.user WHERE User = ?'); $u->execute([$dbName]); $result['user_exists'] = (bool)$u->fetch(); } catch (Exception $e) { $result['user_exists'] = true; }
+
+        if (!$this->tableExists($dbName, $submissionTable)) {
+            $result['tasks'] = $this->a34UnavailableTasks("Submission table '{$submissionTable}' was not found in this database.");
+            $result['error'] = "Submission table '{$submissionTable}' is missing. Score set to 0.";
+            return $result;
+        }
+
+        // Pull the student's logged SQL per task_number (last row wins on duplicates).
+        $submitted = [];
+        try {
+            $rows = $this->pdo->query("SELECT task_number, sql_syntax FROM `{$dbName}`.`{$submissionTable}` ORDER BY id ASC")->fetchAll();
+            foreach ($rows as $row) {
+                $submitted[(int)$row['task_number']] = $row['sql_syntax'];
+            }
+        } catch (Exception $e) {
+            $result['tasks'] = $this->a34UnavailableTasks("Could not read '{$submissionTable}': required columns (task_number, sql_syntax) are missing or malformed.");
+            $result['error'] = "Submission table '{$submissionTable}' is malformed. Score set to 0.";
+            return $result;
+        }
+
+        $sourcePdo = null;
+        try {
+            $sourcePdo = $this->a34SourceConnection();
+        } catch (Exception $e) {
+            $result['tasks'] = $this->a34UnavailableTasks('Could not connect to the dbms_activity source database: ' . $e->getMessage());
+            $result['error'] = 'dbms_activity source database is unreachable. Score set to 0.';
+            return $result;
+        }
+
+        $tasks = [];
+        for ($task = 1; $task <= 10; $task++) {
+            $tasks['task' . $task] = $this->a34Task($sourcePdo, $answerKeyTable, $task, $submitted[$task] ?? null);
+        }
+        foreach ($tasks as &$t) { $t['weight'] = 10; $t['earned_score'] = round($t['score_percent'] / 10, 2); $result['total_score'] += $t['earned_score']; }
+        $result['tasks'] = $tasks; $result['total_score'] = round($result['total_score'], 2); $result['percentage'] = $result['total_score'];
+        return $result;
+    }
+
+    /** One SELECT-statement task: compare the student's logged query's live output against the answer key's. */
+    private function a34Task($sourcePdo, $answerKeyTable, $task, $studentSql) {
+        $refStmt = $this->pdo->prepare("SELECT sql_syntax FROM `dbms_activity_answer_key`.`{$answerKeyTable}` WHERE task_number = ?");
+        $refStmt->execute([$task]);
+        $refSql = $refStmt->fetchColumn();
+        $title = 'Task ' . $task;
+        if ($refSql === false) {
+            return $this->a34Result($title, [$this->a2Check('Answer key entry exists', false, "No task {$task} entry found in {$answerKeyTable}.")]);
+        }
+
+        $checks = [];
+        try {
+            $ref = $this->a34RunQuery($sourcePdo, $refSql);
+        } catch (Exception $e) {
+            // Reference query itself is broken (answer key authoring issue) - not the student's fault to diagnose here.
+            return $this->a34Result($title, [$this->a2Check('Answer key query is runnable', false, 'The instructor reference query failed: ' . $e->getMessage())]);
+        }
+
+        if ($studentSql === null) {
+            $checks[] = $this->a2Check('Output columns and data match the expected result', false, 'No submission recorded for this task.');
+            return $this->a34Result($title, $checks);
+        }
+
+        try {
+            $student = $this->a34RunQuery($sourcePdo, $studentSql);
+            $colsMatch = $this->a34ColumnsMatch($ref['columns'], $student['columns']);
+            $dataMatch = $this->a34RowsMatch($ref['rows'], $student['rows']);
+            $passed = $colsMatch && $dataMatch;
+            $detail = 'Verified';
+            if (!$passed) {
+                $issues = [];
+                if (!$colsMatch) $issues[] = 'expected columns [' . implode(', ', $ref['columns']) . '], got [' . implode(', ', $student['columns']) . ']';
+                if (!$dataMatch) $issues[] = 'expected ' . count($ref['rows']) . ' row(s), got ' . count($student['rows']) . ' row(s) with different data';
+                $detail = implode('; ', $issues);
+            }
+            $checks[] = $this->a2Check('Output columns and data match the expected result', $passed, $detail);
+        } catch (Exception $e) {
+            $checks[] = $this->a2Check('Output columns and data match the expected result', false, 'Query error: ' . $e->getMessage());
+        }
+
+        return $this->a34Result($title, $checks);
+    }
+
+    /** Activity 3/4 tasks are pass/fail: partial credit isn't awarded for matching only columns or only data. */
+    private function a34Result($title, $checks) {
+        $allPassed = count($checks) > 0 && count(array_filter($checks, function($c){ return $c['passed']; })) === count($checks);
+        return ['title'=>$title, 'checks'=>$checks, 'score_percent'=>$allPassed ? 100 : 0, 'log_verified'=>false, 'log_entry'=>null];
+    }
+
+    private function a34UnavailableTasks($detail) {
+        $tasks = [];
+        for ($task = 1; $task <= 10; $task++) {
+            $tasks['task' . $task] = [
+                'title' => 'Task ' . $task,
+                'checks' => [$this->a2Check('Submission is readable', false, $detail)],
+                'score_percent' => 0,
+                'weight' => 10,
+                'earned_score' => 0,
+                'log_verified' => false,
+                'log_entry' => null
+            ];
+        }
+        return $tasks;
+    }
+
+    /** Dedicated read-only connection to dbms_activity used to run student-submitted SQL safely. */
+    private function a34SourceConnection() {
+        $pdo = get_pdo_connection('dbms_activity');
+        $pdo->exec('SET SESSION TRANSACTION READ ONLY');
+        try { $pdo->exec('SET SESSION MAX_EXECUTION_TIME = 5000'); } catch (Exception $e) { /* older MySQL without this variable */ }
+        return $pdo;
+    }
+
+    /** Reject anything but a single, safe SELECT statement before it ever reaches the database. */
+    private function a34ValidateSelect($sql) {
+        $trimmed = trim((string)$sql);
+        if ($trimmed === '') throw new Exception('Empty SQL statement.');
+        $trimmed = preg_replace('/;\s*$/', '', $trimmed);
+        if (strpos($trimmed, ';') !== false) {
+            throw new Exception('Only a single SELECT statement is allowed (no semicolon-separated statements).');
+        }
+        if (!preg_match('/^\s*(SELECT|WITH)\b/i', $trimmed)) {
+            throw new Exception('Only SELECT statements are allowed.');
+        }
+        $forbidden = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'REPLACE', 'GRANT', 'REVOKE', 'CALL', 'EXECUTE', 'LOAD_FILE', 'OUTFILE', 'DUMPFILE', 'LOCK', 'UNLOCK', 'SET'];
+        foreach ($forbidden as $kw) {
+            if (preg_match('/\b' . preg_quote($kw, '/') . '\b/i', $trimmed)) {
+                throw new Exception("Statement contains a disallowed keyword: {$kw}");
+            }
+        }
+        return $trimmed;
+    }
+
+    /** Run a validated SELECT and return its column labels and raw row data. */
+    private function a34RunQuery($pdo, $sql) {
+        $safe = $this->a34ValidateSelect($sql);
+        $stmt = $pdo->query($safe);
+        $columns = [];
+        for ($i = 0; $i < $stmt->columnCount(); $i++) {
+            $meta = $stmt->getColumnMeta($i);
+            $columns[] = $meta['name'] ?? ('col' . $i);
+        }
+        return ['columns' => $columns, 'rows' => $stmt->fetchAll(PDO::FETCH_NUM)];
+    }
+
+    private function a34ColumnsMatch($refCols, $studentCols) {
+        if (count($refCols) !== count($studentCols)) return false;
+        foreach ($refCols as $i => $name) {
+            if (strtolower($name) !== strtolower($studentCols[$i])) return false;
+        }
+        return true;
+    }
+
+    /** Order-independent comparison of row data (values only, not column labels). */
+    private function a34RowsMatch($refRows, $studentRows) {
+        if (count($refRows) !== count($studentRows)) return false;
+        $normalize = function ($rows) {
+            $lines = array_map(function ($row) {
+                return implode("\x1f", array_map(function ($v) {
+                    if ($v === null) return 'NULL';
+                    if (is_numeric($v)) return rtrim(rtrim(sprintf('%.6f', (float)$v), '0'), '.');
+                    return trim((string)$v);
+                }, $row));
+            }, $rows);
+            sort($lines);
+            return $lines;
+        };
+        return $normalize($refRows) === $normalize($studentRows);
     }
 }

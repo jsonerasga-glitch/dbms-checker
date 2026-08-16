@@ -74,6 +74,8 @@ $cfg = get_config();
                                 <select id="activity-id" class="form-control" onchange="updateActivityInfo()">
                                     <option value="activity1">Activity 1 - Library Database</option>
                                     <option value="activity2">Activity 2 - Suppliers & Items CRUD</option>
+                                    <option value="activity3">Activity 3 - SELECT Statements (Registrar)</option>
+                                    <option value="activity4">Activity 4 - Logical Operators & Aggregates (Resort)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -143,6 +145,8 @@ $cfg = get_config();
                         <select id="batch-activity-id" class="form-control" style="width: auto; min-width: 250px;" aria-label="Activity to batch check">
                             <option value="activity1">Activity 1 - Library Database</option>
                             <option value="activity2">Activity 2 - Suppliers & Items CRUD</option>
+                            <option value="activity3">Activity 3 - SELECT Statements (Registrar)</option>
+                            <option value="activity4">Activity 4 - Logical Operators & Aggregates (Resort)</option>
                         </select>
                         <button class="btn" onclick="loadBatchDatabases()"><i class="fas fa-rotate"></i> Refresh</button>
                         <button class="btn btn-success" onclick="exportBatchCSV(false)" title="Export scores and summary statistics without query logs"><i class="fas fa-file-excel"></i> Export CSV (Without Logs)</button>

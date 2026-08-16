@@ -403,8 +403,16 @@ function updateActivityInfo() {
     if (!title || !description || !list) return;
     if (activityId === 'activity2') {
         title.innerHTML = '<i class="fas fa-boxes-stacked"></i> Activity 2 Summary';
-        description.textContent = 'Verifies the suppliers and items CRUD exercise, including required query-log evidence.';
-        list.innerHTML = '<li><strong>Task 1:</strong> Create <code>suppliers</code> and <code>items</code></li><li><strong>Tasks 2–5:</strong> Required single and multiple-row INSERT statements</li><li><strong>Tasks 6–11:</strong> Required SELECT queries</li><li><strong>Tasks 12–16:</strong> Required UPDATE and DELETE operations</li>';
+        description.textContent = 'Verifies the suppliers and items CRUD exercise by checking the final table schema and data state (no query log required).';
+        list.innerHTML = '<li><strong>Task 1:</strong> Create <code>suppliers</code> and <code>items</code></li><li><strong>Tasks 2–5:</strong> Required single and multiple-row INSERT statements</li><li><strong>Tasks 12–16:</strong> Required UPDATE and DELETE operations</li>';
+    } else if (activityId === 'activity3') {
+        title.innerHTML = '<i class="fas fa-list-check"></i> Activity 3 Summary';
+        description.textContent = 'Re-runs each of the 10 SELECT statements the student logged in their activity_20260805 table against dbms_activity, and compares the live output to the instructor answer key (dbms_activity_answer_key.activity3_answerkey).';
+        list.innerHTML = '<li>Submission table <code>activity_20260805</code> must contain 10 rows (task_number 1–10) with the SQL statement used.</li><li>Each task is scored on matching output columns and matching result data, not query text.</li>';
+    } else if (activityId === 'activity4') {
+        title.innerHTML = '<i class="fas fa-hot-tub-person"></i> Activity 4 Summary';
+        description.textContent = 'Re-runs each of the 10 SELECT statements the student logged in their activity_20260817 table against dbms_activity, and compares the live output to the instructor answer key (dbms_activity_answer_key.activity4_answerkey).';
+        list.innerHTML = '<li>Submission table <code>activity_20260817</code> must contain 10 rows (task_number 1–10) with the SQL statement used.</li><li>Each task is scored on matching output columns and matching result data, not query text.</li>';
     } else {
         title.innerHTML = '<i class="fas fa-book"></i> Activity 1 Summary';
         description.textContent = 'Verifies student implementation for Library Database:';
