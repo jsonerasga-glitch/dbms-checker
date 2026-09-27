@@ -76,6 +76,8 @@ $cfg = get_config();
                                     <option value="activity2">Activity 2 - Suppliers & Items CRUD</option>
                                     <option value="activity3">Activity 3 - SELECT Statements (Registrar)</option>
                                     <option value="activity4">Activity 4 - Logical Operators & Aggregates (Resort)</option>
+                                    <option value="activity5">Activity 5 - SELECT Statements (Bookstore)</option>
+                                    <option value="activity6">Activity 6 - Aggregate Functions & Set Operators (Pasalubong Center)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -147,6 +149,8 @@ $cfg = get_config();
                             <option value="activity2">Activity 2 - Suppliers & Items CRUD</option>
                             <option value="activity3">Activity 3 - SELECT Statements (Registrar)</option>
                             <option value="activity4">Activity 4 - Logical Operators & Aggregates (Resort)</option>
+                            <option value="activity5">Activity 5 - SELECT Statements (Bookstore)</option>
+                            <option value="activity6">Activity 6 - Aggregate Functions & Set Operators (Pasalubong Center)</option>
                         </select>
                         <button class="btn" onclick="loadBatchDatabases()"><i class="fas fa-rotate"></i> Refresh</button>
                         <button class="btn btn-success" onclick="exportBatchCSV(false)" title="Export scores and summary statistics without query logs"><i class="fas fa-file-excel"></i> Export CSV (Without Logs)</button>

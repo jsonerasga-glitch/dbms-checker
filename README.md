@@ -4,7 +4,7 @@ A PHP web app for grading MySQL/DBMS class activities. It connects to a
 MySQL server, inspects each student's database (schema and data), and
 produces a scored report per student or for a whole class in one batch.
 
-Built for four activities that use progressively different verification
+Built for six activities that use progressively different verification
 strategies — from schema/DDL checks to live re-execution of student-submitted
 SQL against a shared answer key.
 
@@ -31,8 +31,10 @@ SQL against a shared answer key.
 | **2 — Suppliers & Items CRUD** | `suppliers` / `items` tables, INSERT/UPDATE/DELETE tasks | Final schema + data state (no query log dependency) |
 | **3 — SELECT Statements (Registrar)** | 10 SELECT tasks logged into the student's own `activity_20260805` table | Each logged query is re-run live against `dbms_activity` and compared to the instructor's reference query |
 | **4 — Logical Operators & Aggregates (Resort)** | 10 SELECT tasks logged into `activity_20260817` | Same live-comparison approach, against `dbms_activity_answer_key.activity4_answerkey` |
+| **5 — SELECT Statements (Bookstore)** | 10 SELECT tasks logged into `activity_20260916` | Same live-comparison approach, against `dbms_activity_answer_key.activity5_answerkey` |
+| **6 — Aggregate Functions & Set Operators (Pasalubong Center)** | 10 SELECT tasks logged into `activity_20260928` | Same live-comparison approach, against `dbms_activity_answer_key.activity6_answerkey` |
 
-Activities 3 and 4 execute student-submitted SQL text to verify it. That
+Activities 3-6 execute student-submitted SQL text to verify it. That
 execution is restricted to a single validated `SELECT`/`WITH` statement (no
 stacked statements, no DDL/DML keywords) on a connection opened with
 `SET SESSION TRANSACTION READ ONLY`, so a malformed or malicious submission
@@ -42,10 +44,10 @@ can't affect the shared source database.
 
 - PHP 8+ with the `pdo_mysql` extension
 - A MySQL/MariaDB server reachable from the app
-- For Activities 3 & 4: a `dbms_activity` source database and a
+- For Activities 3-6: a `dbms_activity` source database and a
   `dbms_activity_answer_key` database (`activity3_answerkey`,
-  `activity4_answerkey` tables with `task_number`/`sql_syntax` reference
-  queries)
+  `activity4_answerkey`, `activity5_answerkey`, `activity6_answerkey` tables
+  with `task_number`/`sql_syntax` reference queries)
 
 ## Setup
 

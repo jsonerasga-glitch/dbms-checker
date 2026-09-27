@@ -23,6 +23,12 @@ class ActivityChecker {
         if ($activityId === 'activity4') {
             return $this->checkActivity4($dbName);
         }
+        if ($activityId === 'activity5') {
+            return $this->checkActivity5($dbName);
+        }
+        if ($activityId === 'activity6') {
+            return $this->checkActivity6($dbName);
+        }
         return $this->checkActivity1($dbName);
     }
 
@@ -746,9 +752,27 @@ class ActivityChecker {
         return $this->a34Check($dbName, 'activity_20260817', 'activity4_answerkey', 'Activity 4 - Logical Operators & Aggregate Functions (Resort Records)');
     }
 
-    /** Shared implementation for the SELECT-statement-logging activities (3 & 4). */
+    /**
+     * Activity 5: SELECT statement exercise (Pahina Bookstore / dbms_activity).
+     * Same verification approach as Activity 3/4, against
+     * dbms_activity_answer_key.activity5_answerkey.
+     */
+    public function checkActivity5($dbName) {
+        return $this->a34Check($dbName, 'activity_20260916', 'activity5_answerkey', 'Activity 5 - SELECT Statements (Bookstore Records)');
+    }
+
+    /**
+     * Activity 6: Aggregate functions & set operators exercise (Pitong Lawa
+     * Pasalubong Center / dbms_activity). Same verification approach as
+     * Activity 3/4/5, against dbms_activity_answer_key.activity6_answerkey.
+     */
+    public function checkActivity6($dbName) {
+        return $this->a34Check($dbName, 'activity_20260928', 'activity6_answerkey', 'Activity 6 - Aggregate Functions & Set Operators (Pasalubong Center Records)');
+    }
+
+    /** Shared implementation for the SELECT-statement-logging activities (3-6). */
     private function a34Check($dbName, $submissionTable, $answerKeyTable, $activityName) {
-        $activityId = $answerKeyTable === 'activity3_answerkey' ? 'activity3' : 'activity4';
+        $activityId = preg_replace('/_answerkey$/', '', $answerKeyTable);
         $result = [
             'activity_id' => $activityId, 'activity_name' => $activityName,
             'db_name' => $dbName, 'db_exists' => false, 'user_exists' => false,

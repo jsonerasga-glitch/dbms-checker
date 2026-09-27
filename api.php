@@ -93,7 +93,7 @@ try {
         case 'check_student':
             $dbName = trim($_GET['db_name'] ?? $_POST['db_name'] ?? '');
             $activityId = trim($_GET['activity_id'] ?? $_POST['activity_id'] ?? 'activity1');
-            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4'], true)) {
+            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4', 'activity5', 'activity6'], true)) {
                 throw new Exception("Unknown activity '{$activityId}'.");
             }
             if (!$dbName) {
@@ -116,7 +116,7 @@ try {
             $cfg = get_config();
             $checker = new ActivityChecker($pdo, $cfg);
             $activityId = trim($_POST['activity_id'] ?? $_GET['activity_id'] ?? 'activity1');
-            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4'], true)) {
+            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4', 'activity5', 'activity6'], true)) {
                 throw new Exception("Unknown activity '{$activityId}'.");
             }
 
@@ -203,7 +203,7 @@ try {
                 throw new Exception('Please log in as a student first.');
             }
             $activityId = trim($_GET['activity_id'] ?? $_POST['activity_id'] ?? 'activity1');
-            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4'], true)) throw new Exception("Unknown activity '{$activityId}'.");
+            if (!in_array($activityId, ['activity1', 'activity2', 'activity3', 'activity4', 'activity5', 'activity6'], true)) throw new Exception("Unknown activity '{$activityId}'.");
             $checker = new ActivityChecker(get_pdo_connection(), get_config());
             echo json_encode(['success' => true, 'data' => $checker->checkActivity($activityId, $_SESSION['student_db'])]);
             break;

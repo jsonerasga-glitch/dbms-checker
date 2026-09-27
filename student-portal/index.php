@@ -35,7 +35,7 @@
                 </form>
                 <div id="student-session" style="margin-top:1rem;"></div>
                 <div id="student-controls" style="display:none; margin-top:1rem;">
-                    <div class="form-group"><label for="student-activity-id">Activity</label><select id="student-activity-id" class="form-control"><option value="activity1">Activity 1 - Library Database</option><option value="activity2">Activity 2 - Suppliers & Items CRUD</option></select></div>
+                    <div class="form-group"><label for="student-activity-id">Activity</label><select id="student-activity-id" class="form-control"><option value="activity1">Activity 1 - Library Database</option><option value="activity2">Activity 2 - Suppliers & Items CRUD</option><option value="activity5">Activity 5 - SELECT Statements (Bookstore)</option><option value="activity6">Activity 6 - Aggregate Functions & Set Operators (Pasalubong Center)</option></select></div>
                     <div style="display:flex; gap:.5rem;"><button class="btn btn-success" type="button" onclick="loadStatus()"><i class="fas fa-clipboard-check"></i> View My Status</button><button class="btn" type="button" onclick="logout()">Log Out</button></div>
                 </div>
             </section>
