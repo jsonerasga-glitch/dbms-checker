@@ -31,8 +31,8 @@ SQL against a shared answer key.
 | **2 — Suppliers & Items CRUD** | `suppliers` / `items` tables, INSERT/UPDATE/DELETE tasks | Final schema + data state (no query log dependency) |
 | **3 — SELECT Statements (Registrar)** | 10 SELECT tasks logged into the student's own `activity_20260805` table | Each logged query is re-run live against `dbms_activity` and compared to the instructor's reference query |
 | **4 — Logical Operators & Aggregates (Resort)** | 10 SELECT tasks logged into `activity_20260817` | Same live-comparison approach, against `dbms_activity_answer_key.activity4_answerkey` |
-| **5 — SELECT Statements (Bookstore)** | 10 SELECT tasks logged into `activity_20260916` | Same live-comparison approach, against `dbms_activity_answer_key.activity5_answerkey` |
-| **6 — Aggregate Functions & Set Operators (Pasalubong Center)** | 10 SELECT tasks logged into `activity_20260928` | Same live-comparison approach, against `dbms_activity_answer_key.activity6_answerkey` |
+| **5 — SELECT Statements (Bookstore)** | 10 SELECT tasks logged into `activity_20260923` | Same live-comparison approach, against `dbms_activity_answer_key.activity5_answerkey` |
+| **6 — Aggregate Functions & Set Operators (Pasalubong Center)** | 10 SELECT tasks logged into `activity_20260929` | Same live-comparison approach, against `dbms_activity_answer_key.activity6_answerkey` |
 
 Activities 3-6 execute student-submitted SQL text to verify it. That
 execution is restricted to a single validated `SELECT`/`WITH` statement (no

@@ -758,7 +758,7 @@ class ActivityChecker {
      * dbms_activity_answer_key.activity5_answerkey.
      */
     public function checkActivity5($dbName) {
-        return $this->a34Check($dbName, 'activity_20260916', 'activity5_answerkey', 'Activity 5 - SELECT Statements (Bookstore Records)');
+        return $this->a34Check($dbName, 'activity_20260923', 'activity5_answerkey', 'Activity 5 - SELECT Statements (Bookstore Records)');
     }
 
     /**
@@ -767,7 +767,7 @@ class ActivityChecker {
      * Activity 3/4/5, against dbms_activity_answer_key.activity6_answerkey.
      */
     public function checkActivity6($dbName) {
-        return $this->a34Check($dbName, 'activity_20260928', 'activity6_answerkey', 'Activity 6 - Aggregate Functions & Set Operators (Pasalubong Center Records)');
+        return $this->a34Check($dbName, 'activity_20260929', 'activity6_answerkey', 'Activity 6 - Aggregate Functions & Set Operators (Pasalubong Center Records)');
     }
 
     /** Shared implementation for the SELECT-statement-logging activities (3-6). */

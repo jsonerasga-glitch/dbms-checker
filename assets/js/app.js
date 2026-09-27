@@ -415,12 +415,12 @@ function updateActivityInfo() {
         list.innerHTML = '<li>Submission table <code>activity_20260817</code> must contain 10 rows (task_number 1–10) with the SQL statement used.</li><li>Each task is scored on matching output columns and matching result data, not query text.</li>';
     } else if (activityId === 'activity5') {
         title.innerHTML = '<i class="fas fa-book-open"></i> Activity 5 Summary';
-        description.textContent = 'Re-runs each of the 10 SELECT statements the student logged in their activity_20260916 table against dbms_activity, and compares the live output to the instructor answer key (dbms_activity_answer_key.activity5_answerkey).';
-        list.innerHTML = '<li>Submission table <code>activity_20260916</code> must contain 10 rows (task_number 1–10) with the SQL statement used.</li><li>Each task is scored on matching output columns and matching result data, not query text.</li>';
+        description.textContent = 'Re-runs each of the 10 SELECT statements the student logged in their activity_20260923 table against dbms_activity, and compares the live output to the instructor answer key (dbms_activity_answer_key.activity5_answerkey).';
+        list.innerHTML = '<li>Submission table <code>activity_20260923</code> must contain 10 rows (task_number 1–10) with the SQL statement used.</li><li>Each task is scored on matching output columns and matching result data, not query text.</li>';
     } else if (activityId === 'activity6') {
         title.innerHTML = '<i class="fas fa-gift"></i> Activity 6 Summary';
-        description.textContent = 'Re-runs each of the 10 SELECT statements the student logged in their activity_20260928 table against dbms_activity, and compares the live output to the instructor answer key (dbms_activity_answer_key.activity6_answerkey).';
-        list.innerHTML = '<li>Submission table <code>activity_20260928</code> must contain 10 rows (task_number 1–10) with the SQL statement used.</li><li>Each task is scored on matching output columns and matching result data, not query text.</li>';
+        description.textContent = 'Re-runs each of the 10 SELECT statements the student logged in their activity_20260929 table against dbms_activity, and compares the live output to the instructor answer key (dbms_activity_answer_key.activity6_answerkey).';
+        list.innerHTML = '<li>Submission table <code>activity_20260929</code> must contain 10 rows (task_number 1–10) with the SQL statement used.</li><li>Each task is scored on matching output columns and matching result data, not query text.</li>';
     } else {
         title.innerHTML = '<i class="fas fa-book"></i> Activity 1 Summary';
         description.textContent = 'Verifies student implementation for Library Database:';
