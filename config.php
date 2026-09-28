@@ -3,14 +3,15 @@
  * DBMS Student Activity Checker Configuration
  */
 
-define('CONFIG_FILE', __DIR__ . '/config.json');
+// CONFIG_PATH lets Docker keep config.json in a persistent volume outside the web root.
+define('CONFIG_FILE', getenv('CONFIG_PATH') ?: __DIR__ . '/config.json');
 
 function get_config() {
     $defaults = [
-        'db_host' => '127.0.0.1',
-        'db_port' => '3306',
-        'db_user' => 'root',
-        'db_pass' => '',
+        'db_host' => getenv('DB_HOST') ?: '127.0.0.1',
+        'db_port' => getenv('DB_PORT') ?: '3306',
+        'db_user' => getenv('DB_USER') ?: 'root',
+        'db_pass' => getenv('DB_PASS') ?: '',
         'log_check_enabled' => true,
         'log_date_enabled' => false,
         'log_date_start' => date('Y-m-d'),

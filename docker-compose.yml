@@ -1,0 +1,26 @@
+services:
+  dbms-checker:
+    build: .
+    image: dbms-checker
+    container_name: dbms-checker
+    restart: unless-stopped
+    ports:
+      # Open http://localhost:8080 in the browser. Change the left number if 8080 is taken.
+      - "8080:80"
+    environment:
+      # "host.docker.internal" means "the PC running Docker", i.e. the MySQL installed on this computer.
+      # These are only first-run defaults; you can change them later in the app's Settings.
+      DB_HOST: host.docker.internal
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASS: ""
+      TZ: Asia/Manila
+    extra_hosts:
+      # Makes host.docker.internal work on Linux too (Windows/Mac already have it).
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Keeps your saved Settings when the container is restarted or rebuilt.
+      - checker-data:/data
+
+volumes:
+  checker-data:

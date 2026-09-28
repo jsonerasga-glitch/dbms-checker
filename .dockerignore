@@ -1,0 +1,10 @@
+.git
+.gitignore
+.claude
+activity
+config.json
+Dockerfile
+docker-compose.yml
+.dockerignore
+*.bat
+README.md
